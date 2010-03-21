@@ -1,0 +1,54 @@
+<project name="SendToS3Job" default="dist">
+
+	<!-- set global properties for this build -->
+	<property name="src" value="src" />
+	<property name="dest" value="bin" />
+	<property name="dist" value="kettle/SendToS3Job"/>
+	<property name="version" value="1.0" />
+
+	<path id="project.class.path">
+		<fileset dir="lib">
+			<include name="**/*.jar" />
+		</fileset>
+		<fileset dir="libext">
+			<include name="**/*.jar" />
+		</fileset>		
+		<fileset dir="libswt">
+			<include name="**/*.jar" />
+		</fileset>	
+		<fileset dir="jst">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+	
+	<target name="init">
+		<!-- Create the build directory structure used by compile -->
+		<tstamp />
+		<mkdir dir="${dest}" />
+	</target>
+	<target name="compile" depends="init">
+		<!-- Compile the java code from ${src} into ${dest} -->
+		<javac debug="on" encoding="UTF-8" target="1.5" source="1.5" srcdir="${src}" destdir="${dest}" classpathref="project.class.path">
+		</javac>
+	</target>
+	<target name="clean">
+		<!-- Delete the ${dest} and ${dist} directory tree -->
+		<delete dir="${dest}" />
+	</target>
+	<target name="dist" depends="compile">
+		<buildnumber />
+		<property file="build.number" />
+		<!-- Create the distribution directory -->
+		<mkdir dir="${dist}" />
+		<jar jarfile="${dist}/SendToS3Job.jar" basedir="${dest}" index="true">
+			<manifest>
+				<attribute name="Manifest-Version" value="${version}.${DSTAMP}" />
+				<attribute name="Implementation-Title" value="SendToS3Job" />
+				<attribute name="Implementation-Version" value="${build.number}" />
+				<attribute name="Implementation-Vendor" value="Vendor" />
+			</manifest>
+
+		</jar>
+	</target>
+	<target name="rebuild" depends="compile" />
+</project>

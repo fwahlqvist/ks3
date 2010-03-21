@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+   id="S3SendFile"
+   iconfile="SS3.png"
+   description="Send to S3 job Entry"
+   tooltip="This is a plugin for sending files to S3"
+   category="JobEntry"
+   classname="pdi.jobentry.SendToS3.JobEntrySendToS3">
+   <libraries>
+    <library name="SendToS3job.jar"/>
+    <library name="jets3t-0.7.2.jar"/>
+    </libraries>
+    
+   <localized_category>
+     <category locale="en_US">File management</category>
+     <category locale="nl_NL">File management</category>
+     <category locale="fr_FR">Gestion de fichiers</category>
+   </localized_category>
+   <localized_description>
+     <description locale="en_US">Send file to S3</description>
+     <description locale="nl_NL">Send file to S3</description>
+     <description locale="fr_FR">Envoi de fichier sur S3</description>
+   </localized_description>
+   <localized_tooltip>
+     <tooltip locale="en_US">This is a plugin for sending files to S3</tooltip>
+     <tooltip locale="nl_NL">This is a plugin for sending files to S3</tooltip>
+     <tooltip locale="fr_FR">Ceci est un plugin pour envoyer des fichier sur S3</tooltip>
+   </localized_tooltip>
+   
+</plugin>
