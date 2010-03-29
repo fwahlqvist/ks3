@@ -37,7 +37,16 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
+import org.jets3t.service.S3Service;
+import org.jets3t.service.S3ServiceException;
+import org.jets3t.service.impl.rest.httpclient.RestS3Service;
+import org.jets3t.service.model.S3Bucket;
+import org.jets3t.service.model.S3Object;
+import org.jets3t.service.security.AWSCredentials;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.job.entry.JobEntryDialogInterface;
@@ -59,17 +68,19 @@ import org.pentaho.di.ui.trans.step.BaseStepDialog;
  */
 public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDialogInterface
 {
-  
+	static S3Bucket[] myBuckets;
+	static S3Service s3Service;
+	
     private Label        wlName;
     private Text         wName;
     private FormData     fdlName, fdName;
   
     private Label        wlAccessKey;
-    private TextVar      wAccessKey;
+    public static TextVar      wAccessKey;
     private FormData     fdlAccessKey, fdAccessKey;
     
 	private Label        wlPrivateKey;
-	private TextVar      wPrivateKey;
+	public static TextVar      wPrivateKey;
 	private FormData     fdlPrivateKey, fdPrivateKey;
 	
 	private Label        wlS3Bucket;
@@ -80,11 +91,11 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 	private TextVar      wFilename;
 	private FormData     fdlFilename, fdFilename;
 	
-	private Button wOK, wCancel;
-	private Listener lsOK, lsCancel;
+	private Button wOK, wCancel, wBuckManage;
+	private Listener lsOK, lsCancel, lsBuckMgmt;
 
 	private JobEntrySendToS3     jobEntry;
-	private Shell       	shell;
+	private Shell       	shell, shell2;
 	private PropsUI       	props;
 
 	private SelectionAdapter lsDef;
@@ -201,7 +212,7 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 		wS3Bucket.setLayoutData(fdS3Bucket);
 
 		// Filename line
-			wlFilename=new Label(shell, SWT.RIGHT);
+		wlFilename=new Label(shell, SWT.RIGHT);
 		wlFilename.setText("Filename");
  		props.setLook(wlFilename);
 		fdlFilename=new FormData();
@@ -219,19 +230,23 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 		wFilename.setLayoutData(fdFilename);
 		
 		
+		//Buttons
 		wOK=new Button(shell, SWT.PUSH);
 		wOK.setText(" &OK ");
 		wCancel=new Button(shell, SWT.PUSH);
 		wCancel.setText(" &Cancel ");
+		wBuckManage=new Button(shell, SWT.PUSH);
+		wBuckManage.setText(" &Manage Buckets ");
 
-		BaseStepDialog.positionBottomButtons(shell, new Button[] { wOK, wCancel }, margin, wFilename);
+		BaseStepDialog.positionBottomButtons(shell, new Button[] { wOK, wCancel, wBuckManage }, margin, wFilename);
 
 		// Add listeners
-		lsCancel   = new Listener() { public void handleEvent(Event e) { cancel(); } };
+		lsCancel   = new Listener() { public void handleEvent(Event e){ cancel(); 	}};
 		lsOK       = new Listener() { public void handleEvent(Event e) { ok();     } };
-		
+		lsBuckMgmt = new Listener() { public void handleEvent(Event e) { BuckMgmt();     } };
 		wCancel.addListener(SWT.Selection, lsCancel);
 		wOK.addListener    (SWT.Selection, lsOK    );
+		wBuckManage.addListener    (SWT.Selection, lsBuckMgmt    );
 		
 		lsDef=new SelectionAdapter() { public void widgetDefaultSelected(SelectionEvent e) { ok(); } };
 	
@@ -246,7 +261,7 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 		getData();
 		
 		BaseStepDialog.setSize(shell);
-
+		shell.pack();
 		shell.open();
 		while (!shell.isDisposed())
 		{
@@ -260,6 +275,13 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 		WindowProperty winprop = new WindowProperty(shell);
 		props.setScreen(winprop);
 		shell.dispose();
+	}
+	
+	public void disposeBuckMgmt()
+	{
+		WindowProperty winprop = new WindowProperty(shell2);
+		props.setScreen(winprop);
+		shell2.dispose();
 	}
 	
 	/**
@@ -290,9 +312,164 @@ public class JobEntrySendToS3Dialog extends JobEntryDialog implements JobEntryDi
 		jobEntry.setPrivateKey(wPrivateKey.getText());
 		jobEntry.SetFilenameToSend(wFilename.getText());
 		jobEntry.setS3Bucket(wS3Bucket.getText());
-
 		dispose();
 	}
+	
+	public void BuckMgmt()
+	{
+		// Bucket Management screen
+		// Display
+		Shell parent = shell;
+		final Display display2 = parent.getDisplay();
+		shell2 = new Shell (parent);
+		shell2.setSize(450, 400);
+		JobDialog.setShellImage(shell2, jobEntry);
+		shell2.setText("Bucket management");
+		//Label Bucket number
+		final Label label0 = new Label (shell2, SWT.NONE);
+		label0.setText("");
+		label0.setBounds(10,40,250,20);
+		//List
+		
+		final Table BucketTable = new Table(shell2, SWT.BORDER);
+		BucketTable.setBounds(10, 60, 420, 200);
+		BucketTable.setLinesVisible(true);
+		BucketTable.setHeaderVisible(true);
+
+	    TableColumn BucketCol = new TableColumn(BucketTable, SWT.NONE);
+	    BucketCol.setText("Bucket");
+	    BucketCol.setWidth(200);
+	    TableColumn BucketDate = new TableColumn(BucketTable, SWT.NONE);
+	    BucketDate.setText("Date Created");
+	    BucketDate.setWidth(175);
+	    TableColumn BucketObj = new TableColumn(BucketTable, SWT.NONE);
+	    BucketObj.setText("Nb Objects");
+	    BucketObj.setWidth(40);
+	    
+        for (int i=0; i<4; i++)
+        {
+        	TableItem item = new TableItem(BucketTable, SWT.NONE);
+        	item.setText(new String[] {""});
+        }
+     	//Bucket list Button
+		Button ConnectToS3 = new Button (shell2, SWT.PUSH);
+		ConnectToS3.setText ("List buckets");
+		ConnectToS3.setBounds(175, 10, 100, 30);
+		ConnectToS3.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent e) {
+				try {
+					
+					if((wAccessKey.getText().isEmpty()) || (wPrivateKey.getText().isEmpty()))
+					{
+						label0.setText("Please fill in the Access key and Secret key first !!!");
+						return;
+					}
+					AWSConnect();
+					BucketTable.removeAll();
+			        for (int i=0; i<myBuckets.length; i++)
+			        {
+			        	TableItem item = new TableItem(BucketTable, SWT.NONE);
+			        	S3Object[] objects = s3Service.listObjects(myBuckets[i]);
+			        	item.setText(new String[] { myBuckets[i].getName(), myBuckets[i].getCreationDate().toString(), Integer.toString(objects.length)});
+			    		
+			        }
+			        label0.setText("You have " + myBuckets.length + " Buckets in Amazon S3");
+				} catch (S3ServiceException e1) {
+					// TODO Auto-generated catch block
+					//e1.printStackTrace();
+				}
+			}
+		});
+		//Label Bucket creation
+		final Label label2 = new Label (shell2, SWT.NONE);
+		label2.setText("Bucket creation");
+		label2.setBounds(270,270,200,20);
+		//Text new bucket
+		final Text text2 = new Text(shell2, SWT.BORDER);
+		text2.setText("");
+		text2.setBounds(270,290,160,20);
+		text2.setTextLimit(30);
+		//Label Bucket created
+		final Label label1 = new Label (shell2, SWT.NONE);
+		label1.setText("");
+		label1.setBounds(270,310,200,20);
+		//Create Bucket Button
+		Button CBucketInS3 = new Button (shell2, SWT.PUSH);
+		CBucketInS3.setText ("Create Bucket");
+		CBucketInS3.setBounds(270, 330, 100, 30);
+		CBucketInS3.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent e) {
+				//Create bucket routine here
+				S3Bucket Bucket2Create;
+				try {
+					Bucket2Create = s3Service.createBucket(text2.getText());
+					label1.setText("Bucket successfully created");
+					myBuckets = s3Service.listAllBuckets();
+
+					BucketTable.removeAll();
+			        for (int i=0; i<myBuckets.length; i++)
+			        {
+			        	TableItem item = new TableItem(BucketTable, SWT.NONE);
+			        	S3Object[] objects = s3Service.listObjects(myBuckets[i]);
+			        	item.setText(new String[] { myBuckets[i].getName(), myBuckets[i].getCreationDate().toString(), Integer.toString(objects.length)});
+			        }
+			        label0.setText("You have " + myBuckets.length + " Buckets in Amazon S3");					
+					
+				} catch (S3ServiceException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+		});
+		//Label Target Bucket
+		final Label label3 = new Label (shell2, SWT.NONE);
+		label3.setText("Target bucket : ");
+		label3.setBounds(10,270,200,20);
+		//Text for Access Key
+		final Text text1 = new Text(shell2, SWT.BORDER);
+		text1.setText("");
+		text1.setBounds(10,290,200,20);
+		text1.setTextLimit(30);
+		//OK Button
+		Button OKBut = new Button (shell2, SWT.PUSH);
+		OKBut.setText ("&Ok");
+		OKBut.setBounds(10, 330, 100, 30);
+		OKBut.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent e) {
+				wS3Bucket.setText(text1.getText().toString());
+				disposeBuckMgmt();
+			}
+		});
+		//CANCEL Button
+		Button CancelBut = new Button (shell2, SWT.PUSH);
+		CancelBut.setText ("&Cancel");
+		CancelBut.setBounds(120, 330, 100, 30);
+		CancelBut.addSelectionListener(new SelectionAdapter() {
+			public void widgetSelected(SelectionEvent e) {
+				disposeBuckMgmt();
+			}
+		});
+
+		//listeners
+		BucketTable.addListener (SWT.Selection, new Listener () {
+			public void handleEvent (Event e) {
+				TableItem[] Selct = BucketTable.getSelection();
+				text1.setText (Selct[0].getText());
+			}
+		});
+
+		//shell.pack ();		
+		shell2.open ();
+		while (!shell2.isDisposed ()) {
+			if (!display2.readAndDispatch ()) display2.sleep ();
+		}
+		//disposeBuckMgmt ();
+	}
+	private static void AWSConnect() throws S3ServiceException {
+		AWSCredentials awsCredentials = new AWSCredentials(wAccessKey.getText().toString(), wPrivateKey.getText().toString());
+		s3Service = new RestS3Service(awsCredentials);
+		myBuckets = s3Service.listAllBuckets();
+	}	
 
 	public String toString()
 	{
