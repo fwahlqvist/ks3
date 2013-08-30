@@ -7,5 +7,17 @@
 	<classpathentry kind="lib" path="S3_Send_Job/libext/kettle-db.jar"/>
 	<classpathentry kind="lib" path="S3_Send_Job/libext/kettle-dbdialog.jar"/>
 	<classpathentry kind="lib" path="S3_Send_Job/libext/kettle-test.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/activation.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/axis.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/commons-codec-1.3.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/commons-discovery-0.2.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/commons-httpclient-3.1.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/commons-logging-1.1.1.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/jaxrpc.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/jets3t-0.7.2.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/mail.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/saaj.jar"/>
+	<classpathentry kind="lib" path="S3_Send_Job/jst/wsdl4j-1.5.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
